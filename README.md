@@ -87,7 +87,7 @@ In practice, the view uses `min(customer_city)` and `min(customer_state)` to pre
 ## Project Structure
 
 ```text
-ecommerce-sales-customer-analysis/
+ecommerce-sales-data-analysis/
 ├─ 01_sql/
 │  ├─ 00_create_views.sql
 │  ├─ 01_data_checks.sql
