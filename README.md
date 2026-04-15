@@ -2,25 +2,24 @@
 
 ## Project Overview
 
-This project is an end-to-end data analysis portfolio project built on the Olist Brazilian E-commerce dataset.
+This project is a SQL-based data portfolio project built on the Olist Brazilian E-commerce dataset.
 
-The goal is to analyze sales performance and customer behavior through:
+Its main goal is to transform raw relational data into a clean analytical layer through SQL views, validation checks, and business-defined KPI logic, then deliver reporting outputs in Power BI and Excel.
+
+The project focuses on:
 - SQL analysis
-- Power BI dashboarding
-- a small Excel deliverable for ad-hoc analysis and documentation
-
-The project was designed with a junior Data Analyst role in mind, with a strong focus on:
-- SQL
-- data modeling logic
+- data modeling
+- data quality checks
 - KPI consistency
-- analytical documentation
-- dashboard communication
+- structured reporting outputs
+
+It was designed to demonstrate practical foundations in SQL, relational data modeling, data validation, and downstream reporting.
 
 ---
 
 ## Business Goal
 
-The project aims to answer questions such as:
+After building a consistent analytical layer, the project aims to answer questions such as:
 - How did sales evolve month by month in 2017?
 - Which product categories generated the highest revenue?
 - How many orders and customers contributed to sales performance?
@@ -117,7 +116,55 @@ ecommerce-sales-data-analysis/
 
 ---
 
-## SQL Analysis
+## Data Flow
+
+The project follows this workflow:
+
+1. Raw CSV files are loaded into MySQL
+2. SQL views create a cleaner analytical layer
+3. Data quality checks validate key assumptions and table consistency
+4. KPI and customer analysis queries are built on top of the validated layer
+5. Power BI and Excel consume the final structured output
+
+---
+
+## SQL Showcase
+
+Below is one example of the SQL logic used in the project to transform validated transactional data into customer-level analytical output.
+
+This query aggregates delivered orders at customer-month level for 2017, then uses a window function to compare each customer's last active month with the previous one.
+
+```sql
+-- Query example: customers whose last active month revenue in 2017
+-- is greater than their previous active month revenue
+
+with customer_month_2017 as (
+select
+    o.customer_id, date_format(o.order_date, '%Y-%m') as order_month, sum(oi.price) as month_revenue
+from orders o join order_items oi
+    on oi.order_id = o.order_id
+where o.order_date >= '2017-01-01' and o.order_date < '2018-01-01'
+    and o.order_status = 'delivered'
+group by o.customer_id, date_format(o.order_date, '%Y-%m')
+),
+month_with_lag as (
+select
+    customer_id, order_month, month_revenue, 
+    row_number() over (partition by customer_id order by order_month desc) as rn,
+    lag(month_revenue) over (partition by customer_id order by order_month) as prev_month_revenue
+from customer_month_2017
+)
+select
+    customer_id, order_month as last_active_month, month_revenue as last_active_month_revenue, prev_month_revenue
+from month_with_lag
+where rn = 1
+    and prev_month_revenue is not null
+    and month_revenue > prev_month_revenue;
+```
+
+---
+
+## SQL Layer and Analysis
 
 The SQL part of the project is organized into four files:
 
@@ -169,6 +216,7 @@ Particular attention was given to:
 - separating KPI logic from data quality checks
 - keeping business definitions consistent across SQL, Power BI, and Excel
 - using readable multi-step logic with CTEs where needed
+- preparing validated inputs for downstream reporting
 
 ---
 
@@ -191,11 +239,25 @@ This distinction matters because:
 
 The two should not be mixed.
 
+### Example validation query
+
+The following check identifies orders that exist in the analytical `orders` table but do not have any matching rows in `order_items`.
+
+```sql
+select
+    o.order_id
+from orders o
+left join order_items oi
+    on oi.order_id = o.order_id
+where oi.order_id is null;
+```
+
 ---
 
-## Power BI Dashboard
 
-The Power BI dashboard provides a compact business overview for **delivered orders in 2017**.
+## Reporting Output - Power BI
+
+The Power BI dashboard is built on top of the validated SQL analytical layer and provides a compact business overview for delivered orders in 2017.
 
 ### KPI cards
 - Revenue
@@ -220,9 +282,9 @@ A cleaned category label was also created to remove underscores and improve char
 
 ---
 
-## Excel Analysis
+## Reporting Output - Excel
 
-The Excel deliverable was created to provide a lightweight business-style summary outside SQL and Power BI.
+The Excel deliverable provides a lightweight reporting and documentation layer built from the structured SQL output.
 
 The file contains three sheets:
 1. `Order_Level_2017`
@@ -270,18 +332,21 @@ Based on the delivered-order scope for 2017, the analysis highlights a few clear
 ## Skills Demonstrated
 
 This project demonstrates:
-- strong SQL foundations for junior data analytics
-- understanding of KPI scope and analytical grain
-- ability to separate business analysis from data quality checks
-- basic but solid Power BI dashboard design
-- clear Excel-based documentation and summary reporting
+- advanced SQL querying with joins, CTEs, aggregations, and window functions
+- relational data modeling and analytical view design
+- data validation and consistency checks
+- KPI definition based on explicit business rules
+- separation of data quality logic from business analysis
+- structured preparation of data for downstream reporting
+- Power BI dashboard development
+- Excel-based documentation and exploratory analysis
 
 ---
 
 ## How to Reproduce
 
 1. Load the raw Olist dataset into MySQL.
-2. Create the cleaned analytical views.
+2. Run `00_create_views.sql` to create the analytical SQL layer.
 3. Run the data quality checks.
 4. Run the KPI and customer analysis queries.
 5. Open the Power BI file to explore the visual dashboard.
@@ -291,4 +356,8 @@ This project demonstrates:
 
 ## Author Note
 
-This project was built as a portfolio project for entry-level Data Analyst roles, with the intention of showing not only technical querying ability, but also business reasoning, metric consistency, and clear analytical communication.
+This project was built to strengthen practical skills in SQL, relational data modeling, data validation, KPI logic, and structured reporting workflows.
+
+While the final outputs include dashboards and business insights, the core of the project is the SQL layer: preparing reliable analytical data, validating consistency, and supporting downstream consumption through Power BI and Excel.
+
+It is intended to support entry-level SQL-focused data roles, including Data Engineering, BI, and technical Data Analysis.
